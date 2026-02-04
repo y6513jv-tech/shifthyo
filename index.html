@@ -17,7 +17,13 @@
             -webkit-tap-highlight-color: transparent;
         }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-        .calendar-cell { min-height: 100px; transition: all 0.2s ease; }
+        .calendar-cell { 
+            min-height: 100px; 
+            transition: all 0.2s ease; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
         @media (min-width: 768px) { .calendar-cell { min-height: 140px; } }
         .glass {
             background: rgba(15, 23, 42, 0.4);
@@ -35,6 +41,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            text-align: center;
         }
         .modal-overlay {
             background: rgba(0, 0, 0, 0.8);
@@ -42,7 +49,7 @@
             transition: opacity 0.3s ease;
         }
         .stamp-active { transform: scale(1.1); box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
-        .view-btn-active { background-color: #2563eb; color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .view-btn-active { background-color: #2563eb; color: white; shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
         #chart-svg path { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 <script type="importmap">
@@ -56,19 +63,16 @@
 </script>
 </head>
 <body class="text-slate-100 selection:bg-blue-500/30">
-    <nav id="navbar" class="sticky top-0 z-40 border-b border-white/5 transition-all shadow-xl glass px-4 h-16 flex items-center justify-between">
+    <!-- Header/Navigation -->
+    <nav class="sticky top-0 z-40 border-b border-white/5 shadow-xl glass px-4 h-16 flex items-center justify-between">
         <div class="flex items-center gap-4">
             <h2 class="text-xl font-black text-white tracking-tight flex items-baseline gap-1.5">
                 <span id="display-year" class="text-slate-500 text-sm font-bold"></span>
                 <span id="display-month" class="text-blue-500 text-2xl sm:text-3xl"></span>
             </h2>
             <div class="flex gap-1">
-                <button id="prev-month" class="p-2 hover:bg-white/5 border border-white/5 rounded-xl transition-all active:scale-90">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
-                </button>
-                <button id="next-month" class="p-2 hover:bg-white/5 border border-white/5 rounded-xl transition-all active:scale-90">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
-                </button>
+                <button id="prev-month" class="p-2 hover:bg-white/5 border border-white/5 rounded-xl active:scale-90 transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button>
+                <button id="next-month" class="p-2 hover:bg-white/5 border border-white/5 rounded-xl active:scale-90 transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></button>
             </div>
         </div>
         <div class="flex items-center gap-2">
@@ -86,17 +90,21 @@
         </div>
     </nav>
 
+    <!-- Stamp Toolbar -->
     <div id="stamp-toolbar" class="hidden glass border-b border-white/5 p-2 animate-in slide-in-from-top duration-300">
         <div class="max-w-6xl mx-auto flex flex-wrap justify-center gap-2" id="stamp-list"></div>
     </div>
 
+    <!-- Main Content -->
     <main class="max-w-[1400px] mx-auto p-4 md:p-6">
+        <!-- Calendar View -->
         <div id="view-container-calendar">
             <div id="calendar-container" class="rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/5 glass">
                 <div id="calendar-weekdays" class="calendar-grid border-b border-white/5 bg-black/20 text-center py-4 text-xs font-black tracking-widest uppercase"></div>
                 <div id="calendar-days" class="calendar-grid"></div>
             </div>
-            <div id="selected-day-panel" class="mt-6 max-w-2xl mx-auto hidden transition-all">
+            <!-- Day Details Panel -->
+            <div id="selected-day-panel" class="mt-6 max-w-2xl mx-auto hidden transition-all animate-in fade-in slide-in-from-bottom-2">
                 <div class="glass border border-white/5 rounded-[2rem] p-5 shadow-2xl relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-600"></div>
                     <div class="flex justify-between items-center mb-4">
@@ -109,30 +117,18 @@
                         </button>
                     </div>
                     <div id="selected-note-box" class="bg-black/40 rounded-2xl p-4 border border-white/5 text-sm text-slate-300 min-h-[60px]"></div>
-                    <div id="selected-time-box" class="flex gap-3 mt-4 hidden">
-                        <div class="flex-1 bg-blue-500/5 rounded-2xl py-3 flex flex-col items-center">
-                            <span class="text-[10px] font-black text-blue-500/50 uppercase">Start</span>
-                            <span id="selected-start-time" class="text-lg font-black text-blue-400"></span>
-                        </div>
-                        <div class="flex-1 bg-rose-500/5 rounded-2xl py-3 flex flex-col items-center">
-                            <span class="text-[10px] font-black text-rose-500/50 uppercase">End</span>
-                            <span id="selected-end-time" class="text-lg font-black text-rose-400"></span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <div id="view-container-dashboard" class="hidden">
+        <!-- Dashboard View -->
+        <div id="view-container-dashboard" class="hidden animate-in fade-in">
             <div class="max-w-4xl mx-auto space-y-6">
                 <div class="flex flex-col sm:flex-row gap-4" id="reality-cards-container"></div>
                 <div class="glass border border-white/5 p-6 md:p-8 rounded-[2.5rem] shadow-2xl">
-                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                        今月の統計
-                    </h3>
+                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">統計データ</h3>
                     <div id="stats-grid" class="grid grid-cols-3 gap-3 mb-10"></div>
-                    <div class="border-t border-white/5 pt-10 flex flex-col md:flex-row items-center justify-center gap-12">
+                    <div class="flex flex-col md:flex-row items-center justify-center gap-12">
                         <div class="relative w-48 h-48">
                             <svg viewBox="-1 -1 2 2" class="transform -rotate-90 w-full h-full" id="chart-svg"></svg>
                             <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -149,43 +145,54 @@
 
     <!-- Modals -->
     <div id="shift-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay hidden">
-        <div class="w-full max-w-md glass border border-white/5 rounded-[2.5rem] p-6 shadow-2xl">
-            <h3 id="modal-title" class="text-xl font-black text-white mb-6"></h3>
+        <div class="w-full max-w-md glass border border-white/5 rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95">
+            <h3 id="modal-title" class="text-xl font-black text-white mb-6">シフト編集</h3>
             <form id="shift-form" class="space-y-5">
                 <input type="hidden" id="form-date">
-                <label class="block text-[10px] font-black text-slate-500 uppercase mb-3">シフト種別</label>
                 <div id="shift-type-grid" class="grid grid-cols-3 gap-2"></div>
                 <div class="grid grid-cols-2 gap-4">
-                    <input type="time" id="form-start" class="w-full px-4 py-3 bg-black/40 border border-white/5 rounded-2xl text-white outline-none">
-                    <input type="time" id="form-end" class="w-full px-4 py-3 bg-black/40 border border-white/5 rounded-2xl text-white outline-none">
+                    <input type="time" id="form-start" class="w-full px-4 py-3 bg-black/40 border border-white/5 rounded-2xl text-white">
+                    <input type="time" id="form-end" class="w-full px-4 py-3 bg-black/40 border border-white/5 rounded-2xl text-white">
                 </div>
-                <textarea id="form-note" rows="3" class="w-full px-4 py-3 bg-black/40 border border-white/5 rounded-2xl text-white outline-none resize-none" placeholder="メモ..."></textarea>
+                <textarea id="form-note" rows="3" class="w-full px-4 py-3 bg-black/40 border border-white/5 rounded-2xl text-white resize-none" placeholder="メモ..."></textarea>
                 <div class="flex flex-col gap-3">
-                    <button type="submit" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">保存</button>
-                    <button type="button" id="delete-shift-btn" class="w-full py-3 text-rose-500 font-bold hover:bg-rose-500/10 rounded-2xl hidden">削除</button>
-                    <button type="button" class="close-modal w-full py-3 text-slate-500 font-bold">キャンセル</button>
+                    <button type="submit" class="w-full py-4 bg-blue-600 text-white font-black rounded-2xl active:scale-95 transition-all">保存</button>
+                    <button type="button" id="delete-shift-btn" class="w-full py-3 text-rose-500 font-bold hidden">削除</button>
+                    <button type="button" class="close-modal w-full py-2 text-slate-500">キャンセル</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Settings -->
     <div id="settings-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay hidden">
-        <div class="w-full max-w-2xl glass border border-white/5 rounded-[2.5rem] flex flex-col max-h-[90vh]">
+        <div class="w-full max-w-2xl glass border border-white/5 rounded-[2.5rem] flex flex-col max-h-[90vh] animate-in zoom-in-95">
             <div class="p-6 border-b border-white/5 flex justify-between items-center"><h3 class="text-xl font-black text-white">設定</h3><button class="close-settings p-2 text-slate-500">×</button></div>
             <div class="p-6 overflow-y-auto custom-scrollbar space-y-8">
-                <section><h4 class="text-xs font-black text-blue-500 uppercase mb-4">カラー設定</h4><div id="settings-colors-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div></section>
-                <section><h4 class="text-xs font-black text-blue-500 uppercase mb-4">背景テーマ</h4><div id="background-presets" class="flex flex-wrap gap-3"></div></section>
+                <section>
+                    <h4 class="text-xs font-black text-blue-500 uppercase mb-4">カレンダー・マスの配色</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-2">セルの背景色</label>
+                            <input type="color" id="cell-bg-picker" class="w-full h-10 bg-transparent cursor-pointer">
+                        </div>
+                        <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-2">枠線の色</label>
+                            <input type="color" id="border-color-picker" class="w-full h-10 bg-transparent cursor-pointer">
+                        </div>
+                    </div>
+                </section>
+                <section><h4 class="text-xs font-black text-blue-500 uppercase mb-4">シフトカラー</h4><div id="settings-colors-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div></section>
+                <section><h4 class="text-xs font-black text-blue-500 uppercase mb-4">全体の背景</h4><div id="background-presets" class="flex flex-wrap gap-3"></div></section>
             </div>
             <div class="p-6 border-t border-white/5 flex gap-4">
-                <button id="reset-settings" class="px-6 py-4 rounded-2xl border border-white/10 text-slate-400 flex-1">初期化</button>
+                <button id="reset-settings" class="px-6 py-4 rounded-2xl border border-white/10 text-slate-400 flex-1">リセット</button>
                 <button class="close-settings px-8 py-4 rounded-2xl bg-blue-600 text-white font-black flex-[2]">完了</button>
             </div>
         </div>
     </div>
 
-    <button id="fab-add" class="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-2xl shadow-2xl flex items-center justify-center active:scale-90 transition-all border-4 border-black z-30">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14M12 5v14"/></svg>
-    </button>
+    <button id="fab-add" class="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-2xl shadow-2xl flex items-center justify-center active:scale-90 transition-all border-4 border-black z-30"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14M12 5v14"/></svg></button>
 
     <script src="index.js"></script>
 </body>

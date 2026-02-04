@@ -16,8 +16,8 @@ const DEFAULT_SHIFT_COLORS = {
 };
 
 const DEFAULT_UI_THEME = {
-    cellBg: '#0f172a66',
-    borderColor: '#33415550',
+    cellBg: '#0f172a',
+    borderColor: '#334155',
     dateColor: '#94a3b8',
     satColor: '#3b82f6',
     sunColor: '#f43f5e',
@@ -72,33 +72,6 @@ function loadFromStorage() {
     }
 }
 
-function getJapaneseHolidays(year, month) {
-    const holidays = {};
-    const add = (day, name) => {
-        if (day < 1 || day > 31) return;
-        holidays[`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`] = name;
-    };
-    const getVernalEquinox = (y) => Math.floor(20.8431 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4));
-    const getAutumnalEquinox = (y) => Math.floor(23.2488 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4));
-    const getNthMonday = (y, m, nth) => {
-        const firstDay = new Date(y, m - 1, 1).getDay();
-        let firstMonday = 1 + (8 - firstDay) % 7;
-        if (firstDay === 1) firstMonday = 1;
-        return firstMonday + (nth - 1) * 7;
-    };
-    if (month === 1) { add(1, '元日'); add(getNthMonday(year, 1, 2), '成人の日'); }
-    if (month === 2) { add(11, '建国記念の日'); add(23, '天皇誕生日'); }
-    if (month === 3) add(getVernalEquinox(year), '春分の日');
-    if (month === 4) add(29, '昭和の日');
-    if (month === 5) { add(3, '憲法記念日'); add(4, 'みどりの日'); add(5, 'こどもの日'); }
-    if (month === 7) add(getNthMonday(year, 7, 3), '海の日');
-    if (month === 8) add(11, '山の日');
-    if (month === 9) { add(getNthMonday(year, 9, 3), '敬老の日'); add(getAutumnalEquinox(year), '秋分の日'); }
-    if (month === 10) add(getNthMonday(year, 10, 2), 'スポーツの日');
-    if (month === 11) { add(3, '文化の日'); add(23, '勤労感謝の日'); }
-    return holidays;
-}
-
 function renderAll() {
     updateMonthDisplay();
     renderCalendar();
@@ -131,7 +104,7 @@ function renderCalendar() {
     container.innerHTML = '';
     const year = state.currentDate.getFullYear();
     const month = state.currentDate.getMonth();
-    const holidays = getJapaneseHolidays(year, month + 1);
+    
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
     const totalCells = Math.ceil((firstDay + lastDate) / 7) * 7;
@@ -140,7 +113,7 @@ function renderCalendar() {
 
     for (let i = 0; i < totalCells; i++) {
         const cell = document.createElement('div');
-        cell.className = 'calendar-cell border-b border-r p-2 cursor-pointer relative group flex flex-col';
+        cell.className = 'calendar-cell border-b border-r p-2 cursor-pointer relative group';
         cell.style.backgroundColor = state.uiTheme.cellBg;
         cell.style.borderColor = state.uiTheme.borderColor;
         if ((i + 1) % 7 === 0) cell.style.borderRightWidth = '0';
@@ -152,18 +125,17 @@ function renderCalendar() {
             const isToday = dateStr === todayStr;
             const isSelected = dateStr === selectedStr;
             const dow = dateObj.getDay();
-            const isHoliday = !!holidays[dateStr];
 
             let dateColor = state.uiTheme.dateColor;
-            if (dow === 0 || isHoliday) dateColor = state.uiTheme.sunColor;
-            if (dow === 6 && !isHoliday) dateColor = state.uiTheme.satColor;
+            if (dow === 0) dateColor = state.uiTheme.sunColor;
+            if (dow === 6) dateColor = state.uiTheme.satColor;
 
+            // Date on TOP, shifts on BOTTOM via Flexbox spacing
             cell.innerHTML = `
-                <div class="flex flex-col items-start">
+                <div class="flex items-start">
                     <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-sm font-black ${isToday ? 'bg-blue-600 text-white shadow-lg' : ''}" style="${!isToday ? 'color:' + dateColor : ''}">${dateNum}</span>
-                    ${isHoliday ? `<span class="text-[8px] font-bold truncate w-full" style="color:${state.uiTheme.sunColor}">${holidays[dateStr]}</span>` : ''}
                 </div>
-                <div class="flex-grow flex flex-col gap-0.5 mt-auto" id="shifts-${dateStr}"></div>
+                <div class="flex flex-col gap-0.5 mt-auto mb-1" id="shifts-${dateStr}"></div>
                 <div class="absolute inset-0 border-2 rounded-[1rem] m-0.5 pointer-events-none ${isSelected ? 'border-blue-500/40 bg-blue-500/5' : 'border-transparent'}"></div>
             `;
             cell.onclick = () => handleDateClick(dateObj);
@@ -180,7 +152,7 @@ function renderCalendar() {
                 shiftContainer.appendChild(tag);
             });
         } else {
-            cell.classList.add('bg-black/10');
+            cell.classList.add('opacity-20');
         }
         container.appendChild(cell);
     }
@@ -204,6 +176,7 @@ function renderDashboard() {
     }).join('');
     document.getElementById('total-shifts-count').textContent = totalCount;
 
+    // Simplified Chart logic
     const chartSvg = document.getElementById('chart-svg');
     const legend = document.getElementById('chart-legend');
     chartSvg.innerHTML = ''; legend.innerHTML = '';
@@ -221,6 +194,7 @@ function renderDashboard() {
             const endX = Math.cos(2 * Math.PI * cumulative);
             const endY = Math.sin(2 * Math.PI * cumulative);
             const largeArc = percent > 0.5 ? 1 : 0;
+            
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
             path.setAttribute("d", `M ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} L 0 0`);
             path.setAttribute("fill", state.shiftColors[type].text);
@@ -230,19 +204,6 @@ function renderDashboard() {
         });
         chartSvg.innerHTML += `<circle cx="0" cy="0" r="0.65" fill="${state.appBackground}"/>`;
     }
-
-    const realityContainer = document.getElementById('reality-cards-container');
-    const today = new Date();
-    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-    realityContainer.innerHTML = '';
-    [{ d: today, l: 'Today' }, { d: tomorrow, l: 'Tomorrow' }].forEach(item => {
-        const s = state.shifts.find(x => x.date === getLocalDateString(item.d));
-        realityContainer.innerHTML += `
-            <div class="flex-1 glass border border-white/5 rounded-[2rem] p-5 cursor-pointer" onclick="openByDate('${getLocalDateString(item.d)}')">
-                <div class="flex justify-between items-center mb-4"><span class="text-[10px] font-black text-slate-500">${item.l}</span><span class="text-[10px] font-bold text-slate-500">${item.d.getMonth()+1}/${item.d.getDate()}</span></div>
-                ${s ? `<div class="inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-black mb-2" style="background-color:${state.shiftColors[s.type].bg}; color:${state.shiftColors[s.type].text}">${s.type}</div><div class="text-2xl font-black">${s.startTime || '--:--'} - ${s.endTime || '--:--'}</div>` : `<div class="h-16 flex items-center justify-center border border-dashed border-white/5 rounded-2xl text-slate-600 text-xs">予定なし</div>`}
-            </div>`;
-    });
 }
 
 function updateSelectedDayPanel() {
@@ -252,19 +213,13 @@ function updateSelectedDayPanel() {
     panel.classList.remove('hidden');
     document.getElementById('selected-date-text').textContent = state.selectedDate.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' });
     const tag = document.getElementById('selected-shift-tag');
-    const tBox = document.getElementById('selected-time-box');
     const nBox = document.getElementById('selected-note-box');
     if (s) {
         tag.classList.remove('hidden'); tag.textContent = s.type;
         tag.style.backgroundColor = state.shiftColors[s.type].bg; tag.style.color = state.shiftColors[s.type].text;
-        if (s.startTime || s.endTime) {
-            tBox.classList.remove('hidden');
-            document.getElementById('selected-start-time').textContent = s.startTime || '--:--';
-            document.getElementById('selected-end-time').textContent = s.endTime || '--:--';
-        } else tBox.classList.add('hidden');
         nBox.textContent = s.note || 'メモなし';
     } else {
-        tag.classList.add('hidden'); tBox.classList.add('hidden'); nBox.textContent = '予定なし';
+        tag.classList.add('hidden'); nBox.textContent = '予定なし';
     }
 }
 
@@ -277,11 +232,6 @@ function handleDateClick(date) {
         else state.shifts.push({ id: Math.random().toString(36).substr(2, 9), date: dStr, type: state.activeStamp, startTime: '', endTime: '', note: '' });
         saveToStorage(); renderAll();
     } else { renderAll(); }
-}
-
-function openByDate(dateStr) {
-    state.selectedDate = new Date(dateStr);
-    openShiftModal();
 }
 
 function openShiftModal() {
@@ -331,7 +281,9 @@ function setupEventListeners() {
     document.getElementById('shift-form').onsubmit = (e) => {
         e.preventDefault();
         const dStr = document.getElementById('form-date').value;
-        const type = document.querySelector('.shift-type-choice[style*="background-color: rgb"]').dataset.type;
+        const typeEl = document.querySelector('.shift-type-choice[style*="background-color: rgb"]');
+        if(!typeEl) return;
+        const type = typeEl.dataset.type;
         const newS = { id: Math.random().toString(36).substr(2, 9), date: dStr, type, startTime: document.getElementById('form-start').value, endTime: document.getElementById('form-end').value, note: document.getElementById('form-note').value };
         const idx = state.shifts.findIndex(x => x.date === dStr);
         if (idx > -1) state.shifts[idx] = newS; else state.shifts.push(newS);
@@ -344,6 +296,11 @@ function setupEventListeners() {
     };
     document.getElementById('open-settings').onclick = () => document.getElementById('settings-modal').classList.remove('hidden');
     document.querySelectorAll('.close-settings').forEach(b => b.onclick = () => document.getElementById('settings-modal').classList.add('hidden'));
+    
+    // UI Theme Pickers
+    document.getElementById('cell-bg-picker').oninput = (e) => { state.uiTheme.cellBg = e.target.value; saveToStorage(); renderCalendar(); };
+    document.getElementById('border-color-picker').oninput = (e) => { state.uiTheme.borderColor = e.target.value; saveToStorage(); renderCalendar(); };
+    
     document.getElementById('reset-settings').onclick = () => { if(confirm('初期化しますか？')){ localStorage.clear(); location.reload(); } };
 }
 
@@ -382,6 +339,10 @@ function renderSettings() {
                 <input type="color" class="w-full h-8 bg-transparent" value="${state.shiftColors[t].text}" oninput="updateColor('${t}','text',this.value)">
             </div>
         </div>`).join('');
+    
+    document.getElementById('cell-bg-picker').value = state.uiTheme.cellBg;
+    document.getElementById('border-color-picker').value = state.uiTheme.borderColor;
+
     const presets = document.getElementById('background-presets');
     presets.innerHTML = BACKGROUND_PRESETS.map(p => `<button class="w-10 h-10 rounded-lg border-2" style="background-color:${p.color}" onclick="updateBg('${p.color}')"></button>`).join('') + `<input type="color" class="w-10 h-10 bg-transparent" oninput="updateBg(this.value)">`;
 }
