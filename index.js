@@ -41,8 +41,15 @@ let state = {
     selectedDate: new Date(),
     isStampMode: false,
     activeStamp: '日勤',
-    viewMode: 'calendar'
+    viewMode: 'calendar',
+    selectedTypeInModal: '日勤'
 };
+
+// スワイプ管理用
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
 
 function init() {
     loadFromStorage();
@@ -51,6 +58,7 @@ function init() {
     renderAll();
     setupEventListeners();
     renderSettings();
+    setupSwipeListeners();
 }
 
 function saveToStorage() {
@@ -72,8 +80,91 @@ function loadFromStorage() {
     }
 }
 
+function getJapaneseHolidays(year, month) {
+    const holidays = {};
+    const add = (day, name) => {
+        if (day < 1 || day > 31) return;
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        holidays[dateStr] = name;
+    };
+
+    const getVernalEquinox = (y) => {
+        if (y < 1900 || y > 2099) return 20;
+        return Math.floor(20.8431 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4));
+    };
+
+    const getAutumnalEquinox = (y) => {
+        if (y < 1900 || y > 2099) return 23;
+        return Math.floor(23.2488 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4));
+    };
+
+    const getNthMonday = (y, m, nth) => {
+        const firstDay = new Date(y, m - 1, 1).getDay();
+        let firstMonday = 1 + (8 - firstDay) % 7;
+        if (firstDay === 1) firstMonday = 1;
+        return firstMonday + (nth - 1) * 7;
+    };
+
+    if (month === 1) {
+        add(1, '元日');
+        add(getNthMonday(year, 1, 2), '成人の日');
+    }
+    if (month === 2) {
+        add(11, '建国記念の日');
+        add(23, '天皇誕生日');
+    }
+    if (month === 3) add(getVernalEquinox(year), '春分の日');
+    if (month === 4) add(29, '昭和の日');
+    if (month === 5) {
+        add(3, '憲法記念日');
+        add(4, 'みどりの日');
+        add(5, 'こどもの日');
+    }
+    if (month === 7) add(getNthMonday(year, 7, 3), '海の日');
+    if (month === 8) add(11, '山の日');
+    if (month === 9) {
+        add(getNthMonday(year, 9, 3), '敬老の日');
+        add(getAutumnalEquinox(year), '秋分の日');
+    }
+    if (month === 10) add(getNthMonday(year, 10, 2), 'スポーツの日');
+    if (month === 11) {
+        add(3, '文化の日');
+        add(23, '勤労感謝の日');
+    }
+
+    for (let d = 1; d <= 31; d++) {
+        const date = new Date(year, month - 1, d);
+        if (date.getMonth() !== month - 1) break;
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        
+        if (holidays[dateStr] && date.getDay() === 0) {
+            let subDay = new Date(date);
+            let subDayStr = "";
+            do {
+                subDay.setDate(subDay.getDate() + 1);
+                subDayStr = `${subDay.getFullYear()}-${String(subDay.getMonth() + 1).padStart(2, '0')}-${String(subDay.getDate()).padStart(2, '0')}`;
+            } while (holidays[subDayStr]);
+
+            if (subDay.getMonth() + 1 === month) {
+                holidays[subDayStr] = '振替休日';
+            }
+        }
+    }
+
+    if (month === 9) {
+        const respect = getNthMonday(year, 9, 3);
+        const autumnal = getAutumnalEquinox(year);
+        if (autumnal - respect === 2) {
+            add(respect + 1, '国民の休日');
+        }
+    }
+
+    return holidays;
+}
+
 function renderAll() {
     updateMonthDisplay();
+    renderWeekdays(); // 曜日の色も変わる可能性があるため追加
     renderCalendar();
     renderDashboard();
     updateSelectedDayPanel();
@@ -105,6 +196,7 @@ function renderCalendar() {
     const year = state.currentDate.getFullYear();
     const month = state.currentDate.getMonth();
     
+    const holidays = getJapaneseHolidays(year, month + 1);
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
     const totalCells = Math.ceil((firstDay + lastDate) / 7) * 7;
@@ -125,22 +217,27 @@ function renderCalendar() {
             const isToday = dateStr === todayStr;
             const isSelected = dateStr === selectedStr;
             const dow = dateObj.getDay();
+            const holidayName = holidays[dateStr];
+            const isHoliday = !!holidayName;
 
             let dateColor = state.uiTheme.dateColor;
-            if (dow === 0) dateColor = state.uiTheme.sunColor;
-            if (dow === 6) dateColor = state.uiTheme.satColor;
+            if (dow === 0 || isHoliday) dateColor = state.uiTheme.sunColor;
+            if (dow === 6 && !isHoliday) dateColor = state.uiTheme.satColor;
 
-            // Date on TOP, shifts on BOTTOM via Flexbox spacing
+            const dayShifts = state.shifts.filter(s => s.date === dateStr);
+            const hasNote = dayShifts.some(s => s.note && s.note.trim() !== "");
+
             cell.innerHTML = `
-                <div class="flex items-start">
+                <div class="flex flex-col items-start relative">
                     <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-sm font-black ${isToday ? 'bg-blue-600 text-white shadow-lg' : ''}" style="${!isToday ? 'color:' + dateColor : ''}">${dateNum}</span>
+                    ${isHoliday ? `<span class="text-[8px] font-bold truncate w-full" style="color:${state.uiTheme.sunColor}">${holidayName}</span>` : ''}
+                    ${hasNote ? `<div class="absolute top-0 right-0 w-1.5 h-1.5 bg-slate-400 rounded-full"></div>` : ''}
                 </div>
                 <div class="flex flex-col gap-0.5 mt-auto mb-1" id="shifts-${dateStr}"></div>
                 <div class="absolute inset-0 border-2 rounded-[1rem] m-0.5 pointer-events-none ${isSelected ? 'border-blue-500/40 bg-blue-500/5' : 'border-transparent'}"></div>
             `;
             cell.onclick = () => handleDateClick(dateObj);
 
-            const dayShifts = state.shifts.filter(s => s.date === dateStr);
             const shiftContainer = cell.querySelector(`#shifts-${dateStr}`);
             dayShifts.forEach(s => {
                 const colors = state.shiftColors[s.type];
@@ -176,7 +273,6 @@ function renderDashboard() {
     }).join('');
     document.getElementById('total-shifts-count').textContent = totalCount;
 
-    // Simplified Chart logic
     const chartSvg = document.getElementById('chart-svg');
     const legend = document.getElementById('chart-legend');
     chartSvg.innerHTML = ''; legend.innerHTML = '';
@@ -228,10 +324,23 @@ function handleDateClick(date) {
     if (state.isStampMode) {
         const dStr = getLocalDateString(date);
         const idx = state.shifts.findIndex(x => x.date === dStr);
-        if (idx > -1) state.shifts[idx].type = state.activeStamp;
-        else state.shifts.push({ id: Math.random().toString(36).substr(2, 9), date: dStr, type: state.activeStamp, startTime: '', endTime: '', note: '' });
-        saveToStorage(); renderAll();
-    } else { renderAll(); }
+        if (idx > -1) {
+            state.shifts[idx].type = state.activeStamp;
+        } else {
+            state.shifts.push({ 
+                id: Math.random().toString(36).substr(2, 9), 
+                date: dStr, 
+                type: state.activeStamp, 
+                startTime: '', 
+                endTime: '', 
+                note: '' 
+            });
+        }
+        saveToStorage(); 
+        renderAll();
+    } else { 
+        renderAll(); 
+    }
 }
 
 function openShiftModal() {
@@ -244,17 +353,29 @@ function openShiftModal() {
     document.getElementById('form-note').value = s?.note || '';
     const delBtn = document.getElementById('delete-shift-btn');
     if (s) delBtn.classList.remove('hidden'); else delBtn.classList.add('hidden');
-    renderShiftTypeButtons(s?.type || '日勤');
+    
+    state.selectedTypeInModal = s?.type || '日勤';
+    renderShiftTypeButtons(state.selectedTypeInModal);
     document.getElementById('shift-modal').classList.remove('hidden');
 }
 
 function renderShiftTypeButtons(active) {
     const grid = document.getElementById('shift-type-grid');
     grid.innerHTML = SHIFT_TYPES.map(t => {
-        const activeStyle = t === active ? `background-color:${state.shiftColors[t].bg}; color:${state.shiftColors[t].text}; border-color:${state.shiftColors[t].text}` : 'background-color:#00000033; color:#555; border-color:#1e293b';
-        return `<button type="button" class="shift-type-choice py-3 rounded-xl border-2 text-xs font-black" data-type="${t}" style="${activeStyle}">${t}</button>`;
+        const isActive = t === active;
+        const activeStyle = isActive 
+            ? `background-color:${state.shiftColors[t].bg}; color:${state.shiftColors[t].text}; border-color:${state.shiftColors[t].text}` 
+            : 'background-color:#00000033; color:#555; border-color:#1e293b';
+        const activeClass = isActive ? 'active-type' : '';
+        return `<button type="button" class="shift-type-choice py-3 rounded-xl border-2 text-xs font-black ${activeClass}" data-type="${t}" style="${activeStyle}">${t}</button>`;
     }).join('');
-    grid.querySelectorAll('button').forEach(b => b.onclick = () => renderShiftTypeButtons(b.dataset.type));
+    
+    grid.querySelectorAll('button').forEach(b => {
+        b.onclick = () => {
+            state.selectedTypeInModal = b.dataset.type;
+            renderShiftTypeButtons(state.selectedTypeInModal);
+        };
+    });
 }
 
 function getLocalDateString(date) {
@@ -272,36 +393,103 @@ function setupEventListeners() {
     document.getElementById('fab-add').onclick = () => openShiftModal();
     document.getElementById('edit-selected-btn').onclick = () => openShiftModal();
     document.querySelector('.close-modal').onclick = () => document.getElementById('shift-modal').classList.add('hidden');
+    
     document.getElementById('toggle-stamp-mode').onclick = (e) => {
         state.isStampMode = !state.isStampMode;
         const bar = document.getElementById('stamp-toolbar');
-        if (state.isStampMode) { e.currentTarget.classList.add('bg-blue-600', 'text-white'); bar.classList.remove('hidden'); updateStampToolbar(); }
-        else { e.currentTarget.classList.remove('bg-blue-600', 'text-white'); bar.classList.add('hidden'); }
+        if (state.isStampMode) { 
+            e.currentTarget.classList.add('bg-blue-600', 'text-white'); 
+            bar.classList.remove('hidden'); 
+            updateStampToolbar(); 
+        } else { 
+            e.currentTarget.classList.remove('bg-blue-600', 'text-white'); 
+            bar.classList.add('hidden'); 
+        }
     };
+
     document.getElementById('shift-form').onsubmit = (e) => {
         e.preventDefault();
         const dStr = document.getElementById('form-date').value;
-        const typeEl = document.querySelector('.shift-type-choice[style*="background-color: rgb"]');
-        if(!typeEl) return;
-        const type = typeEl.dataset.type;
-        const newS = { id: Math.random().toString(36).substr(2, 9), date: dStr, type, startTime: document.getElementById('form-start').value, endTime: document.getElementById('form-end').value, note: document.getElementById('form-note').value };
+        const type = state.selectedTypeInModal;
+        const note = document.getElementById('form-note').value;
+        const startTime = document.getElementById('form-start').value;
+        const endTime = document.getElementById('form-end').value;
+
+        const newS = { 
+            id: Math.random().toString(36).substr(2, 9), 
+            date: dStr, 
+            type, 
+            startTime, 
+            endTime, 
+            note 
+        };
+
         const idx = state.shifts.findIndex(x => x.date === dStr);
-        if (idx > -1) state.shifts[idx] = newS; else state.shifts.push(newS);
-        saveToStorage(); document.getElementById('shift-modal').classList.add('hidden'); renderAll();
+        if (idx > -1) {
+            state.shifts[idx] = newS;
+        } else {
+            state.shifts.push(newS);
+        }
+        
+        saveToStorage(); 
+        document.getElementById('shift-modal').classList.add('hidden'); 
+        renderAll();
     };
+
     document.getElementById('delete-shift-btn').onclick = () => {
         const dStr = document.getElementById('form-date').value;
         state.shifts = state.shifts.filter(x => x.date !== dStr);
-        saveToStorage(); document.getElementById('shift-modal').classList.add('hidden'); renderAll();
+        saveToStorage(); 
+        document.getElementById('shift-modal').classList.add('hidden'); 
+        renderAll();
     };
+
     document.getElementById('open-settings').onclick = () => document.getElementById('settings-modal').classList.remove('hidden');
     document.querySelectorAll('.close-settings').forEach(b => b.onclick = () => document.getElementById('settings-modal').classList.add('hidden'));
     
-    // UI Theme Pickers
-    document.getElementById('cell-bg-picker').oninput = (e) => { state.uiTheme.cellBg = e.target.value; saveToStorage(); renderCalendar(); };
-    document.getElementById('border-color-picker').oninput = (e) => { state.uiTheme.borderColor = e.target.value; saveToStorage(); renderCalendar(); };
+    // カラーピッカーのイベントリスナー
+    const uiThemeKeys = ['date-color', 'header-color', 'sat-color', 'sun-color', 'cell-bg', 'border-color'];
+    uiThemeKeys.forEach(k => {
+        const id = `${k}-picker`;
+        const stateKey = k.replace(/-([a-z])/g, (g) => g[1].toUpperCase()); // kebab to camel
+        document.getElementById(id).oninput = (e) => {
+            state.uiTheme[stateKey] = e.target.value;
+            saveToStorage();
+            renderAll();
+        };
+    });
     
     document.getElementById('reset-settings').onclick = () => { if(confirm('初期化しますか？')){ localStorage.clear(); location.reload(); } };
+}
+
+function setupSwipeListeners() {
+    const calendarContainer = document.getElementById('calendar-container');
+    
+    calendarContainer.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    calendarContainer.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        touchEndY = e.changedTouches[0].screenY;
+        handleSwipe();
+    }, { passive: true });
+}
+
+function handleSwipe() {
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    const threshold = 50; 
+
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
+        if (deltaX > 0) {
+            state.currentDate.setMonth(state.currentDate.getMonth() - 1);
+        } else {
+            state.currentDate.setMonth(state.currentDate.getMonth() + 1);
+        }
+        renderAll();
+    }
 }
 
 function switchView() {
@@ -340,6 +528,11 @@ function renderSettings() {
             </div>
         </div>`).join('');
     
+    // UIテーマピッカーの初期値をセット
+    document.getElementById('date-color-picker').value = state.uiTheme.dateColor;
+    document.getElementById('header-color-picker').value = state.uiTheme.headerColor;
+    document.getElementById('sat-color-picker').value = state.uiTheme.satColor;
+    document.getElementById('sun-color-picker').value = state.uiTheme.sunColor;
     document.getElementById('cell-bg-picker').value = state.uiTheme.cellBg;
     document.getElementById('border-color-picker').value = state.uiTheme.borderColor;
 

@@ -28,6 +28,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const dayColors = [
+    { label: '数字', key: 'dateColor' },
+    { label: '曜日', key: 'headerColor' },
+    { label: '土曜', key: 'satColor' },
+    { label: '日祝', key: 'sunColor' },
+  ];
+
+  const layoutColors = [
+    { label: 'セルの背景', key: 'cellBg' },
+    { label: '枠線の色', key: 'borderColor' },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
       <div 
@@ -36,7 +48,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       >
         <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-inherit z-10">
           <h3 className="text-xl font-black text-white flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><path d="M12.22 2h-.44a2 2 0 0 0-2 2 2 2 0 0 1-2 2 2 2 0 0 0-2 2 2 2 0 0 1-2 2 2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2 2 2 0 0 1 2 2 2 2 0 0 0 2 2 2 2 0 0 1 2 2 2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2 2 2 0 0 1 2-2 2 2 0 0 0 2-2 2 2 0 0 1 2-2 2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2 2 2 0 0 1-2-2 2 2 0 0 0-2-2 2 2 0 0 1-2-2 2 2 0 0 0-2-2ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><path d="M12.22 2h-.44a2 2 0 0 0-2 2 2 2 0 0 1-2 2 2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2 2 2 0 0 1 2 2 2 2 0 0 0 2 2 2 2 0 0 1 2 2 2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2 2 2 0 0 1 2-2 2 2 0 0 0 2-2 2 2 0 0 1 2-2 2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2 2 2 0 0 1-2-2 2 2 0 0 0-2-2 2 2 0 0 1-2-2 2 2 0 0 0-2-2ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
             表示設定
           </h3>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-slate-400">
@@ -45,6 +57,45 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          {/* UI Theme Section - Compact Horizontal Layout */}
+          <section>
+            <h4 className="text-xs font-black text-blue-500 uppercase tracking-[0.2em] mb-4">カレンダー配色</h4>
+            
+            <div className="space-y-4">
+              {/* Row 1: Day/Text Colors in one row */}
+              <div className="bg-black/30 p-4 rounded-2xl border border-slate-800/50">
+                <div className="flex items-center justify-between gap-2">
+                  {dayColors.map(item => (
+                    <div key={item.key} className="flex flex-col items-center flex-1 gap-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase whitespace-nowrap">{item.label}</label>
+                      <input 
+                        type="color" 
+                        value={uiTheme[item.key as keyof UITheme]}
+                        onChange={(e) => onUIThemeChange(item.key as keyof UITheme, e.target.value)}
+                        className="w-full max-w-[50px] h-8 bg-transparent cursor-pointer rounded-lg border-none outline-none appearance-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Row 2: Layout Colors */}
+              <div className="grid grid-cols-2 gap-3">
+                {layoutColors.map(item => (
+                  <div key={item.key} className="bg-black/30 px-5 py-3 rounded-2xl border border-slate-800/50 flex items-center justify-between group transition-all hover:bg-black/40">
+                    <label className="text-xs font-bold text-slate-400 group-hover:text-white transition-colors">{item.label}</label>
+                    <input 
+                      type="color" 
+                      value={uiTheme[item.key as keyof UITheme]}
+                      onChange={(e) => onUIThemeChange(item.key as keyof UITheme, e.target.value)}
+                      className="w-8 h-8 bg-transparent cursor-pointer rounded-lg border-none outline-none appearance-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
           {/* Shift Colors Section */}
           <section>
             <h4 className="text-xs font-black text-blue-500 uppercase tracking-[0.2em] mb-4">シフトカラー設定</h4>
@@ -79,31 +130,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       />
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* UI Theme Section */}
-          <section>
-            <h4 className="text-xs font-black text-blue-500 uppercase tracking-[0.2em] mb-4">カレンダー配色</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {[
-                { label: '日付文字', key: 'dateColor' },
-                { label: '土曜日', key: 'satColor' },
-                { label: '日曜日/祝日', key: 'sunColor' },
-                { label: 'ヘッダー文字', key: 'headerColor' },
-                { label: 'セルの背景', key: 'cellBg' },
-                { label: '枠線の色', key: 'borderColor' },
-              ].map(item => (
-                <div key={item.key} className="bg-black/20 p-3 rounded-2xl border border-slate-800/50">
-                  <label className="block text-[10px] font-bold text-slate-500 mb-2 truncate">{item.label}</label>
-                  <input 
-                    type="color" 
-                    value={uiTheme[item.key as keyof UITheme]}
-                    onChange={(e) => onUIThemeChange(item.key as keyof UITheme, e.target.value)}
-                    className="w-full h-8 bg-transparent cursor-pointer rounded overflow-hidden"
-                  />
                 </div>
               ))}
             </div>

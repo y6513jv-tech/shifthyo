@@ -49,7 +49,7 @@
             transition: opacity 0.3s ease;
         }
         .stamp-active { transform: scale(1.1); box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
-        .view-btn-active { background-color: #2563eb; color: white; shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .view-btn-active { background-color: #2563eb; color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
         #chart-svg path { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 <script type="importmap">
@@ -124,7 +124,6 @@
         <!-- Dashboard View -->
         <div id="view-container-dashboard" class="hidden animate-in fade-in">
             <div class="max-w-4xl mx-auto space-y-6">
-                <div class="flex flex-col sm:flex-row gap-4" id="reality-cards-container"></div>
                 <div class="glass border border-white/5 p-6 md:p-8 rounded-[2.5rem] shadow-2xl">
                     <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">統計データ</h3>
                     <div id="stats-grid" class="grid grid-cols-3 gap-3 mb-10"></div>
@@ -170,20 +169,36 @@
             <div class="p-6 border-b border-white/5 flex justify-between items-center"><h3 class="text-xl font-black text-white">設定</h3><button class="close-settings p-2 text-slate-500">×</button></div>
             <div class="p-6 overflow-y-auto custom-scrollbar space-y-8">
                 <section>
-                    <h4 class="text-xs font-black text-blue-500 uppercase mb-4">カレンダー・マスの配色</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <h4 class="text-xs font-black text-blue-500 uppercase mb-4 tracking-widest">カレンダーの配色設定</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
-                            <label class="block text-[10px] font-bold text-slate-500 mb-2">セルの背景色</label>
-                            <input type="color" id="cell-bg-picker" class="w-full h-10 bg-transparent cursor-pointer">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-2">日付の数字色</label>
+                            <input type="color" id="date-color-picker" class="w-full h-8 bg-transparent cursor-pointer">
+                        </div>
+                        <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-2">曜日の文字色</label>
+                            <input type="color" id="header-color-picker" class="w-full h-8 bg-transparent cursor-pointer">
+                        </div>
+                        <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-2">土曜日の色</label>
+                            <input type="color" id="sat-color-picker" class="w-full h-8 bg-transparent cursor-pointer">
+                        </div>
+                        <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-2">日曜・祝日の色</label>
+                            <input type="color" id="sun-color-picker" class="w-full h-8 bg-transparent cursor-pointer">
+                        </div>
+                        <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
+                            <label class="block text-[10px] font-bold text-slate-500 mb-2">マスの背景色</label>
+                            <input type="color" id="cell-bg-picker" class="w-full h-8 bg-transparent cursor-pointer">
                         </div>
                         <div class="bg-black/20 p-4 rounded-2xl border border-white/5">
                             <label class="block text-[10px] font-bold text-slate-500 mb-2">枠線の色</label>
-                            <input type="color" id="border-color-picker" class="w-full h-10 bg-transparent cursor-pointer">
+                            <input type="color" id="border-color-picker" class="w-full h-8 bg-transparent cursor-pointer">
                         </div>
                     </div>
                 </section>
-                <section><h4 class="text-xs font-black text-blue-500 uppercase mb-4">シフトカラー</h4><div id="settings-colors-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div></section>
-                <section><h4 class="text-xs font-black text-blue-500 uppercase mb-4">全体の背景</h4><div id="background-presets" class="flex flex-wrap gap-3"></div></section>
+                <section><h4 class="text-xs font-black text-blue-500 uppercase mb-4 tracking-widest">シフトカラー</h4><div id="settings-colors-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div></section>
+                <section><h4 class="text-xs font-black text-blue-500 uppercase mb-4 tracking-widest">全体の背景</h4><div id="background-presets" class="flex flex-wrap gap-3"></div></section>
             </div>
             <div class="p-6 border-t border-white/5 flex gap-4">
                 <button id="reset-settings" class="px-6 py-4 rounded-2xl border border-white/10 text-slate-400 flex-1">リセット</button>

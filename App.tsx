@@ -4,6 +4,7 @@ import Calendar from './components/Calendar';
 import WidgetView from './components/WidgetView';
 import ShiftModal from './components/ShiftModal';
 import SettingsModal from './components/SettingsModal';
+import BannerAd from './components/BannerAd';
 import { Shift, ShiftType, ShiftColorMap, UITheme } from './types';
 import { Icons, DEFAULT_SHIFT_COLORS, DEFAULT_BACKGROUND, DEFAULT_UI_THEME } from './constants';
 
@@ -398,6 +399,9 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Banner Ad Area */}
+        <BannerAd appBackground={appBackground} />
       </main>
 
       {!isBatchEditMode && (
